@@ -1,0 +1,165 @@
+-- Database creation 
+CREATE DATABASE eBankDB;
+USE eBankDB;
+
+-- 1. TABLE CREATION WITH CONSTRAINTS
+
+CREATE TABLE User (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    role ENUM('Customer', 'Employee', 'Manager') NOT NULL,
+    created_at DATETIME NOT NULL
+);
+
+CREATE TABLE Branch (
+    branch_id INT PRIMARY KEY AUTO_INCREMENT,
+    branch_name VARCHAR(100) NOT NULL,
+    address VARCHAR(200) NOT NULL,
+    IFSC VARCHAR(15) UNIQUE NOT NULL
+);
+
+CREATE TABLE Customer (
+    customer_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(15) NOT NULL,
+    address VARCHAR(200) NOT NULL,
+    dob DATE NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES User(user_id)
+);
+
+CREATE TABLE Employee (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT UNIQUE NOT NULL,
+    branch_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    designation VARCHAR(50) NOT NULL,
+    hire_date DATE NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES User(user_id),
+    FOREIGN KEY (branch_id) REFERENCES Branch(branch_id)
+);
+
+CREATE TABLE Manager (
+    employee_id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone_no VARCHAR(15) NOT NULL,
+    FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
+);
+
+CREATE TABLE Account (
+    account_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    branch_id INT NOT NULL,
+    balance DECIMAL(12,2) NOT NULL CHECK (balance >= 0),
+    account_type ENUM('Savings', 'Current') NOT NULL,
+    status ENUM('Active', 'Frozen', 'Closed') NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES Customer(customer_id),
+    FOREIGN KEY (branch_id) REFERENCES Branch(branch_id)
+);
+
+CREATE TABLE Transactions (
+    txn_id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
+    txn_type ENUM('Credit', 'Debit', 'Transfer') NOT NULL,
+    amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+    txn_date DATETIME NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    destination_acc INT,
+    FOREIGN KEY (account_id) REFERENCES Account(account_id)
+);
+
+CREATE TABLE Beneficiary (
+    beneficiary_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    beneficiary_name VARCHAR(100) NOT NULL,
+    beneficiary_AccNum VARCHAR(20) NOT NULL,
+    date DATE NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES Customer(customer_id)
+);
+
+CREATE TABLE Fixed_Deposit (
+    fd_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    account_id INT NOT NULL,
+    deposit_amt DECIMAL(12,2) NOT NULL CHECK (deposit_amt > 0),
+    interest_rate DECIMAL(5,2) NOT NULL,
+    start_date DATE NOT NULL,
+    maturity_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES Customer(customer_id),
+    FOREIGN KEY (account_id) REFERENCES Account(account_id)
+);
+
+CREATE TABLE Audit_Log (
+    log_id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    action_date DATETIME NOT NULL,
+    description VARCHAR(255),
+    FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
+);
+
+-- 2. INDEX CREATION
+
+CREATE INDEX idx_user_role ON User(role);
+CREATE INDEX idx_account_customer ON Account(customer_id);
+CREATE INDEX idx_transactions_account ON Transactions(account_id);
+CREATE INDEX idx_fd_customer ON Fixed_Deposit(customer_id);
+CREATE INDEX idx_audit_employee ON Audit_Log(employee_id);
+
+-- 3. DATA INSERTION
+
+INSERT INTO User (username, password, role, created_at) VALUES
+('cust1', 'pass111', 'Customer', NOW()),
+('cust2', 'pass222', 'Customer', NOW()),
+('cust3', 'pass333', 'Customer', NOW()),
+('emp1',  'pass444', 'Employee', NOW()),
+('mgr1',  'pass555', 'Manager', NOW()),
+('mgr2',  'pass666', 'Manager', NOW());
+
+INSERT INTO Branch (branch_name, address, IFSC) VALUES
+('Connaught Place', 'New Delhi', 'EBNK0001'),
+('Karol Bagh', 'New Delhi', 'EBNK0002');
+
+INSERT INTO Customer (user_id, name, email, phone, address, dob) VALUES
+(1, 'Rahul Mehta', 'rahul@gmail.com', '9876543210', 'Delhi', '1998-05-12'),
+(2, 'Aman Gupta', 'aman@gmail.com', '9123456780', 'Noida', '1999-03-15'),
+(3, 'Neha Singh', 'neha@gmail.com', '9234567810', 'Gurgaon', '1997-07-22');
+
+INSERT INTO Employee (user_id, branch_id, name, designation, hire_date) VALUES
+(4, 1, 'Ravi Kumar', 'Clerk', '2021-04-10'),
+(5, 1, 'Ankit Sharma', 'Branch Manager', '2019-09-18'),
+(6, 2, 'Pooja Mehta', 'Branch Manager', '2018-06-25');
+
+INSERT INTO Manager (employee_id, name, email, phone_no) VALUES
+(2, 'Ankit Sharma', 'ankit@bank.com', '9999999999'),
+(3, 'Pooja Mehta', 'pooja@bank.com', '9888888888');
+
+INSERT INTO Account (customer_id, branch_id, balance, account_type, status, created_at) VALUES
+(1, 1, 50000, 'Savings', 'Active', NOW()),
+(2, 1, 30000, 'Savings', 'Active', NOW()),
+(3, 2, 75000, 'Current', 'Active', NOW());
+
+INSERT INTO Transactions (account_id, txn_type, amount, txn_date, status) VALUES
+(1, 'Credit', 5000, NOW(), 'Success'),
+(2, 'Debit', 2000, NOW(), 'Success'),
+(3, 'Transfer', 10000, NOW(), 'Pending');
+
+INSERT INTO Beneficiary (customer_id, beneficiary_name, beneficiary_AccNum, date) VALUES
+(1, 'Amit Verma', '1234567890', CURDATE()),
+(2, 'Raj Malhotra', '2222222222', CURDATE()),
+(3, 'Sneha Jain', '3333333333', CURDATE());
+
+INSERT INTO Fixed_Deposit (customer_id, account_id, deposit_amt, interest_rate, start_date, maturity_date, status) VALUES
+(1, 1, 20000, 6.5, CURDATE(), '2026-01-01', 'Active'),
+(2, 2, 25000, 6.8, CURDATE(), '2026-03-01', 'Active'),
+(3, 3, 40000, 7.1, CURDATE(), '2027-01-15', 'Active');
+
+INSERT INTO Audit_Log (employee_id, action, action_date, description) VALUES
+(1, 'Account Opened', NOW(), 'New savings account opened'),
+(2, 'FD Created', NOW(), 'Fixed deposit created'),
+(3, 'Account Reviewed', NOW(), 'Account reviewed by manager');
